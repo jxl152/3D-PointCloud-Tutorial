@@ -1,24 +1,49 @@
-# 实现PCA分析和法向量计算，并加载数据集中的文件进行验证
+# Implement PCA and Surface Normal, and validate them by the data of ModelNet40
 
 import open3d as o3d 
 import os
 import numpy as np
 from pyntcloud import PyntCloud
 
-# 功能：计算PCA的函数
-# 输入：
-#     data：点云，NX3的矩阵
-#     correlation：区分np的cov和corrcoef，不输入时默认为False
-#     sort: 特征值排序，排序是为了其他功能方便使用，不输入时默认为True
-# 输出：
-#     eigenvalues：特征值
-#     eigenvectors：特征向量
+
+# def standardize_data(arr):
+#     """
+#     This function standardize an array.
+#     Each column subtracts its mean value, and then divide its standard devision.
+#
+#     param arr: array of point cloud
+#     return: standardized array
+#     """
+#     mean_arr, std_arr = np.mean(arr, axis=0), np.std(arr, axis=0)
+#     # print(f"before standardization, mean is {mean_arr} and std is {std_arr}")
+#     arr = (arr - mean_arr) / std_arr
+#     # print(f"after standardization, mean is {np.mean(arr, axis=0)} and std is {np.std(arr, axis=0)}")
+#     return arr
+
+
 def PCA(data, correlation=False, sort=True):
-    # 作业1
-    # 屏蔽开始
+    """
+    Apply PCA to point cloud11
+    Args:
+        data: point cloud, matrix of Nx3
+        correlation: use np.cov if False, otherwise np.corrcoef if True. default: False
+        sort: whether sort according to eigenvalues. default: True.
+    Returns:
+        eigenvalues
+        eigenvectors
+    """
+    # 1. normalized by the center
+    data = data - np.mean(data, axis=0)
 
+    # 2. compute the covariance matrix
+    if correlation:
+        # each row represents a variable, and each column a single observation of all those variables.
+        cov_mat = np.corrcoef(data.T)
+    else:
+        cov_mat = np.cov(data.T)
 
-    # 屏蔽结束
+    # 3. apply svd to the covariance matrix
+    eigenvalues, eigenvectors = np.linalg.eig(cov_mat)
 
     if sort:
         sort = eigenvalues.argsort()[::-1]
@@ -29,42 +54,70 @@ def PCA(data, correlation=False, sort=True):
 
 
 def main():
-    # 加载原始点云
-    with open('/home/yuenlin/data/modelnet40_normal_resampled/'
-              'modelnet40_shape_names.txt') as f:
-        a = f.readlines()
-    for i in a:
+    # the names of 40 categories
+    with open('../data/modelnet40_normal_resampled/modelnet40_shape_names.txt') as f:
+        cates = f.readlines()
+
+    for cate in cates:
         point_cloud_pynt = PyntCloud.from_file(
-            '/home/yuenlin/data/modelnet40_normal_resampled/'
-            '{}/{}_0001.txt'.format(i.strip(), i.strip()), sep=",",
+            '../data/modelnet40_normal_resampled/{}/{}_0001.txt'.format(cate.strip(), cate.strip()), sep=",",
             names=["x", "y", "z", "nx", "ny", "nz"])
-    point_cloud_o3d = point_cloud_pynt.to_instance("open3d", mesh=False)
-    # o3d.visualization.draw_geometries([point_cloud_o3d]) # 显示原始点云
 
-    # 从点云中获取点，只对点进行处理
-    points = point_cloud_pynt.points
-    print('total points number is:', points.shape[0])
+        # convert PyntCloud instance to open3d
+        point_cloud_o3d = point_cloud_pynt.to_instance("open3d", mesh=False)
+        # visualize the original point cloud
+        o3d.visualization.draw_geometries([point_cloud_o3d])
+        # visualize the original point cloud with normal
+        o3d.visualization.draw_geometries([point_cloud_o3d], point_show_normal=True)
 
-    # 用PCA分析点云主方向
-    w, v = PCA(points)
-    point_cloud_vector = v[:, 0] #点云主方向对应的向量
-    print('the main orientation of this pointcloud is: ', point_cloud_vector)
-    # TODO: 此处只显示了点云，还没有显示PCA
-    # o3d.visualization.draw_geometries([point_cloud_o3d])
-    
-    # 循环计算每个点的法向量
-    pcd_tree = o3d.geometry.KDTreeFlann(point_cloud_o3d)
-    normals = []
-    # 作业2
-    # 屏蔽开始
+        # extract points from the PyntCloud object
+        points = point_cloud_pynt.xyz    # {ndarray:(10000,3)}
+        print('total points number is:', points.shape[0])
 
-    # 由于最近邻搜索是第二章的内容，所以此处允许直接调用open3d中的函数
+        # Apply PCA to point cloud
+        w, v = PCA(points)
+        point_cloud_vector = v[:, 0]    # vectors of the principle component
+        print('the main orientation of this point cloud is: ', point_cloud_vector)
+        print('the second significant orientation of this point cloud is: ', v[:, 1])
 
-    # 屏蔽结束
-    normals = np.array(normals, dtype=np.float64)
-    # TODO: 此处把法向量存放在了normals中
-    point_cloud_o3d.normals = o3d.utility.Vector3dVector(normals)
-    o3d.visualization.draw_geometries([point_cloud_o3d])
+        # visualize three principle component axis
+        line_set = o3d.geometry.LineSet()
+        line_set.points = o3d.utility.Vector3dVector([np.mean(points, axis=0),
+                                                      np.mean(points, axis=0) + v[:, 0],
+                                                      np.mean(points, axis=0) + v[:, 1],
+                                                      np.mean(points, axis=0) + v[:, 2]])
+        line_set.lines = o3d.utility.Vector2iVector([[0, 1], [0, 2], [0, 3]])
+        line_set.colors = o3d.utility.Vector3dVector([[0, 0, 0], [255, 0, 0], [0, 255, 0]]) # black, red, green
+        o3d.visualization.draw_geometries([point_cloud_o3d, line_set])
+
+        # Projection of point cloud on the plane of the first two principle components
+        centered_points = points-np.mean(points, axis=0)
+        # calculate the projection of point cloud on the least significant vector of PCA
+        least_pc = v[:, -1]
+        scalar_arr = np.dot(centered_points, least_pc) / np.linalg.norm(least_pc, axis=0)**2
+        proj_on_least_pc = scalar_arr.reshape(scalar_arr.size, 1) * least_pc
+        # subtract the projection on the least pc from original points, to obtain the projection on the plane
+        projected_points = centered_points - proj_on_least_pc
+        # visualize the projection
+        pcd = o3d.geometry.PointCloud()
+        pcd.points = o3d.utility.Vector3dVector(projected_points)
+        o3d.visualization.draw_geometries([pcd])
+
+        # Surface Normal Estimation
+        # calculate the KDTree from the point cloud
+        pcd_tree = o3d.geometry.KDTreeFlann(point_cloud_o3d)
+        normals = []
+        for point in points:
+            # for each point, find its 50-nearest neighbors
+            [_, idx, _] = pcd_tree.search_knn_vector_3d(point, knn=50)
+            w, v = PCA(points[idx])
+            # normal -> the least significant vector of PCA
+            normals.append(v[:, 2])
+
+        # visualize point cloud with surface normal
+        normals = np.array(normals, dtype=np.float64)
+        point_cloud_o3d.normals = o3d.utility.Vector3dVector(normals)
+        o3d.visualization.draw_geometries([point_cloud_o3d], point_show_normal=True)
 
 
 if __name__ == '__main__':
