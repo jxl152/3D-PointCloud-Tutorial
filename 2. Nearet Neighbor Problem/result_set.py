@@ -1,6 +1,5 @@
-# 该文件定义了在树中查找数据所需要的数据结构，类似一个中间件
-
 import copy
+import numpy as np
 
 
 class DistIndex:
@@ -29,7 +28,7 @@ class KNNResultSet:
     def full(self):
         return self.count == self.capacity
 
-    def worstDist(self):
+    def worst_distance(self):
         return self.worst_dist
 
     def add_point(self, dist, index):
@@ -51,11 +50,17 @@ class KNNResultSet:
         self.dist_index_list[i].distance = dist
         self.dist_index_list[i].index = index
         self.worst_dist = self.dist_index_list[self.capacity-1].distance
-        
+
+    def knn_indexes(self):
+        index_ls = []
+        for i, dist_index in enumerate(self.dist_index_list):
+            index_ls.append(dist_index.index)
+        return index_ls
+
     def __str__(self):
         output = ''
         for i, dist_index in enumerate(self.dist_index_list):
-            output += '%d - %.2f\n' % (dist_index.index, dist_index.distance)
+            output += '%d - %.2f; ' % (dist_index.index, dist_index.distance)
         output += 'In total %d comparison operations.' % self.comparison_counter
         return output
 
@@ -72,7 +77,7 @@ class RadiusNNResultSet:
     def size(self):
         return self.count
 
-    def worstDist(self):
+    def worst_distance(self):
         return self.radius
 
     def add_point(self, dist, index):
@@ -83,6 +88,14 @@ class RadiusNNResultSet:
         self.count += 1
         self.dist_index_list.append(DistIndex(dist, index))
 
+    def sorted_neighbors_indexes(self):
+        dist_ls = []
+        index_ls = []
+        for _, dist_index in enumerate(self.dist_index_list):
+            dist_ls.append(dist_index.distance)
+            index_ls.append(dist_index.index)
+        return np.asarray(index_ls)[np.argsort(dist_ls)]
+
     def __str__(self):
         self.dist_index_list.sort()
         output = ''
@@ -91,5 +104,3 @@ class RadiusNNResultSet:
         output += 'In total %d neighbors within %f.\nThere are %d comparison operations.' \
                   % (self.count, self.radius, self.comparison_counter)
         return output
-
-

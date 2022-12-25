@@ -1,12 +1,10 @@
-# kdtree的具体实现，包括构建和查找
-
 import random
 import math
 import numpy as np
 
 from result_set import KNNResultSet, RadiusNNResultSet
 
-# Node类，Node是tree的基本组成元素
+
 class Node:
     def __init__(self, axis, value, left, right, point_indices):
         self.axis = axis
@@ -32,14 +30,20 @@ class Node:
         output += str(self.point_indices.tolist())
         return output
 
-# 功能：构建树之前需要对value进行排序，同时对一个的key的顺序也要跟着改变
-# 输入：
-#     key：键
-#     value:值
-# 输出：
-#     key_sorted：排序后的键
-#     value_sorted：排序后的值
+
 def sort_key_by_vale(key, value):
+    """
+    Before splitting, it must sort keys and values according to values.
+    Args:
+        key: indexes of points.
+        value: points' values along with an axis.
+    Returns:
+        key_sorted: sorted keys according to value_sorted.
+        value_sorted: sorted values.
+    :param key:
+    :param value:
+    :return:
+    """
     assert key.shape == value.shape
     assert len(key.shape) == 1
     sorted_idx = np.argsort(value)
@@ -49,110 +53,156 @@ def sort_key_by_vale(key, value):
 
 
 def axis_round_robin(axis, dim):
-    if axis == dim-1:
+    """
+    Args:
+        axis: the axis used for splitting the current tree.
+        dim: the dimensionality of the data.
+    Returns:
+        the axis to be used for the sub-tree of the current tree.
+    """
+    if axis == dim - 1:
         return 0
     else:
         return axis + 1
 
-# 功能：通过递归的方式构建树
-# 输入：
-#     root: 树的根节点
-#     db: 点云数据
-#     point_indices：排序后的键
-#     axis: scalar
-#     leaf_size: scalar
-# 输出：
-#     root: 即构建完成的树
+
 def kdtree_recursive_build(root, db, point_indices, axis, leaf_size):
+    """
+    Build a KDTree recursively.
+    Args:
+        root: the root node of the current tree (a sub-tree of the KDTree).
+        db: the point cloud data.
+        point_indices: the indexes of the points belonging to the current tree.
+        axis: the axis used to split the current tree.
+        leaf_size: the maximum number of points that a leaf node can contain.
+    Returns:
+        the root node of the current sub-tree.
+    """
     if root is None:
         root = Node(axis, None, None, None, point_indices)
 
     # determine whether to split into left and right
     if len(point_indices) > leaf_size:
-        # --- get the split position ---
-        point_indices_sorted, _ = sort_key_by_vale(point_indices, db[point_indices, axis])  # M
-        
-        # 作业1
-        # 屏蔽开始
+        # get the split position, i.e., median position along with axis
+        point_indices_sorted, _ = sort_key_by_vale(point_indices, db[point_indices, axis])
 
-        # 屏蔽结束
+        middle_left_idx = math.ceil(point_indices_sorted.shape[0] / 2) - 1
+        middle_right_idx = middle_left_idx + 1
+
+        # calculate root.value
+        middle_left_point_idx = point_indices_sorted[middle_left_idx]
+        middle_left_point_value = db[middle_left_point_idx, axis]
+        middle_right_point_idx = point_indices_sorted[middle_right_idx]
+        middle_right_point_value = db[middle_right_point_idx, axis]
+        root.value = (middle_left_point_value + middle_right_point_value) / 2
+
+        # build the left sub-kdtree of the current node
+        root.left = kdtree_recursive_build(root.left,
+                                           db,
+                                           point_indices_sorted[:middle_right_idx],
+                                           axis_round_robin(axis, db.shape[1]),
+                                           leaf_size)
+        # build the right sub-kdtree of the current node
+        root.right = kdtree_recursive_build(root.right,
+                                            db,
+                                            point_indices_sorted[middle_right_idx:],
+                                            axis_round_robin(axis, db.shape[1]),
+                                            leaf_size)
     return root
 
 
-# 功能：翻转一个kd树
-# 输入：
-#     root：kd树
-#     depth: 当前深度
-#     max_depth：最大深度
-def traverse_kdtree(root: Node, depth, max_depth):
-    depth[0] += 1
-    if max_depth[0] < depth[0]:
-        max_depth[0] = depth[0]
-
-    if root.is_leaf():
-        print(root)
-    else:
-        traverse_kdtree(root.left, depth, max_depth)
-        traverse_kdtree(root.right, depth, max_depth)
-
-    depth[0] -= 1
-
-# 功能：构建kd树（利用kdtree_recursive_build功能函数实现的对外接口）
-# 输入：
-#     db_np：原始数据
-#     leaf_size：scale
-# 输出：
-#     root：构建完成的kd树
-def kdtree_construction(db_np, leaf_size):
-    N, dim = db_np.shape[0], db_np.shape[1]
+def kdtree_construction(db, leaf_size):
+    """
+    The interface for building a KDTree. It will invoke the method kdtree_recursive_build(...).
+    Args:
+        dp: the point cloud data, N*3.
+        leaf_size: the maximum number of points that a leaf node can contain.
+    Returns:
+        root: the root node of the KDTree.
+    """
+    N, dim = db.shape[0], db.shape[1]
 
     # build kd_tree recursively
     root = None
     root = kdtree_recursive_build(root,
-                                  db_np,
+                                  db,
                                   np.arange(N),
                                   axis=0,
                                   leaf_size=leaf_size)
     return root
 
 
-# 功能：通过kd树实现knn搜索，即找出最近的k个近邻
-# 输入：
-#     root: kd树
-#     db: 原始数据
-#     result_set：搜索结果
-#     query：索引信息
-# 输出：
-#     搜索失败则返回False
+def traverse_kdtree(root: Node, depth, max_depth):
+    """
+    Traverse a kdtree, to know the maximum depth of a kdtree.
+    Args:
+        root: the root node of the current kdtree.
+        depth: the depth of the root node.
+        max_depth: to record the maximum depth of the whole ketree.
+    Returns:
+        None
+    """
+    depth[0] += 1
+    if max_depth[0] < depth[0]:
+        max_depth[0] = depth[0]
+
+    # if root.is_leaf():
+        # print(root)
+    if not root.is_leaf():
+        traverse_kdtree(root.left, depth, max_depth)
+        traverse_kdtree(root.right, depth, max_depth)
+
+    depth[0] -= 1
+
+
 def kdtree_knn_search(root: Node, db: np.ndarray, result_set: KNNResultSet, query: np.ndarray):
+    """
+    Find k nearest neighbors by a KDTree.
+    Args:
+        root: the root node of the current kdtree.
+        db: the point cloud data.
+        result_set: a data structure which stores the results.
+        query: the point to be searched for its k nearest neighbors.
+    Returns:
+        False as failure or end.
+    """
     if root is None:
         return False
 
     if root.is_leaf():
-        # compare the contents of a leaf
+        # compare query to every point inside the leaf
         leaf_points = db[root.point_indices, :]
-        diff = np.linalg.norm(np.expand_dims(query, 0) - leaf_points, axis=1)
+        diff = np.linalg.norm(np.expand_dims(query, axis=0) - leaf_points, axis=1)
+        # put all into the result set
         for i in range(diff.shape[0]):
             result_set.add_point(diff[i], root.point_indices[i])
         return False
 
-    # 作业2
-    # 提示：仍通过递归的方式实现搜索
-    # 屏蔽开始
-
-    # 屏蔽结束
+    if query[root.axis] <= root.value:
+        # search the left sub-kdtree first
+        kdtree_knn_search(root.left, db, result_set, query)
+        # go to right if the distance between query and root is less than the current worst distance
+        if math.fabs(query[root.axis] - root.value) < result_set.worst_distance():
+            kdtree_knn_search(root.right, db, result_set, query)
+    else:
+        kdtree_knn_search(root.right, db, result_set, query)
+        if math.fabs(query[root.axis] - root.value) < result_set.worst_distance():
+            kdtree_knn_search(root.left, db, result_set, query)
 
     return False
 
-# 功能：通过kd树实现radius搜索，即找出距离radius以内的近邻
-# 输入：
-#     root: kd树
-#     db: 原始数据
-#     result_set:搜索结果
-#     query：索引信息
-# 输出：
-#     搜索失败则返回False
+
 def kdtree_radius_search(root: Node, db: np.ndarray, result_set: RadiusNNResultSet, query: np.ndarray):
+    """
+    Find nearest neighbors within a radius defined by result_set.
+    Args:
+        root: the root node of the current kdtree.
+        db: the point cloud data.
+        result_set: a data structure which stores the results.
+        query: the point to be searched for its nearest neighbors.
+    Returns:
+        False as failure or end.
+    """
     if root is None:
         return False
 
@@ -163,52 +213,35 @@ def kdtree_radius_search(root: Node, db: np.ndarray, result_set: RadiusNNResultS
         for i in range(diff.shape[0]):
             result_set.add_point(diff[i], root.point_indices[i])
         return False
-    
-    # 作业3
-    # 提示：通过递归的方式实现搜索
-    # 屏蔽开始
 
-    # 屏蔽结束
+    if query[root.axis] <= root.value:
+        kdtree_radius_search(root.left, db, result_set, query)
+        if math.fabs(query[root.axis] - root.value) < result_set.worst_distance():
+            kdtree_radius_search(root.right, db, result_set, query)
+    else:
+        kdtree_radius_search(root.right, db, result_set, query)
+        if math.fabs(query[root.axis] - root.value) < result_set.worst_distance():
+            kdtree_radius_search(root.left, db, result_set, query)
 
     return False
 
 
-
-def main():
-    # configuration
-    db_size = 64
-    dim = 3
-    leaf_size = 4
-    k = 1
-
-    db_np = np.random.rand(db_size, dim)
-
-    root = kdtree_construction(db_np, leaf_size=leaf_size)
-
-    depth = [0]
-    max_depth = [0]
-    traverse_kdtree(root, depth, max_depth)
-    print("tree max depth: %d" % max_depth[0])
-
-    # query = np.asarray([0, 0, 0])
-    # result_set = KNNResultSet(capacity=k)
-    # knn_search(root, db_np, result_set, query)
-    #
-    # print(result_set)
-    #
-    # diff = np.linalg.norm(np.expand_dims(query, 0) - db_np, axis=1)
-    # nn_idx = np.argsort(diff)
-    # nn_dist = diff[nn_idx]
-    # print(nn_idx[0:k])
-    # print(nn_dist[0:k])
-    #
-    #
-    # print("Radius search:")
-    # query = np.asarray([0, 0, 0])
-    # result_set = RadiusNNResultSet(radius = 0.5)
-    # radius_search(root, db_np, result_set, query)
-    # print(result_set)
+# def main():
+#     # configuration
+#     db_size = 64
+#     dim = 3
+#     leaf_size = 4
+#     k = 1
+#
+#     db_np = np.random.rand(db_size, dim)
+#
+#     root = kdtree_construction(db_np, leaf_size=leaf_size)
+#
+#     depth = [0]
+#     max_depth = [0]
+#     traverse_kdtree(root, depth, max_depth)
+#     print("tree max depth: %d" % max_depth[0])
 
 
-if __name__ == '__main__':
-    main()
+# if __name__ == '__main__':
+#     main()
