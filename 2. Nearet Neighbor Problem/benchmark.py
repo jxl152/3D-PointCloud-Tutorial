@@ -7,7 +7,7 @@ import struct
 import open3d as o3d
 import scipy.spatial
 
-# import octree as octree
+import octree as octree
 import kdtree as kdtree
 from result_set import KNNResultSet, RadiusNNResultSet
 
@@ -62,23 +62,23 @@ def main():
     k_neighbors = nn_idx[:k]
     brute_force_time = time.time() - begin_t
     print(f"k nearest neighbors are {k_neighbors}")
-    print(f"search time = {brute_force_time * 1000:.3f} ms\n")
+    print(f"search time = {brute_force_time * 1000:.3f} ms")
 
     # scipy.spatial.KDTree
-    # print("scipy.spatial.KDTree ---------")
-    # begin_t = time.time()
-    # kd_tree = scipy.spatial.KDTree(db)
-    # scipy_kdtree_construct_time = time.time() - begin_t
-    # print(f"construction time = {scipy_kdtree_construct_time * 1000:.3f} ms")
+    print("\nscipy.spatial.KDTree ---------")
+    begin_t = time.time()
+    kd_tree = scipy.spatial.KDTree(db)
+    scipy_kdtree_construct_time = time.time() - begin_t
+    print(f"construction time = {scipy_kdtree_construct_time * 1000:.3f} ms")
 
-    # begin_t = time.time()
-    # k_nearest_dist, k_nearest_neighbors = kd_tree.query(query, k=8)
-    # scipy_kdtree_search_time = time.time() - begin_t
-    # print(f"k nearest neighbors are {k_nearest_neighbors}")
-    # print(f"search time = {scipy_kdtree_search_time * 1000:.3f} ms\n")
+    begin_t = time.time()
+    k_nearest_dist, k_nearest_neighbors = kd_tree.query(query, k=8)
+    scipy_kdtree_search_time = time.time() - begin_t
+    print(f"k nearest neighbors are {k_nearest_neighbors}")
+    print(f"search time = {scipy_kdtree_search_time * 1000:.3f} ms")
 
     # KDTree
-    print("KDTree ---------")
+    print("\nKDTree ---------")
     begin_t = time.time()
     root = kdtree.kdtree_construction(db, leaf_size)
     kdtree_construct_time = time.time() - begin_t
@@ -101,7 +101,33 @@ def main():
     print(f"neighbors within {radius} are {result_set.sorted_neighbors_indexes()}")
     print(f"radius search time = {radius_search_time * 1000:.3f} ms")
 
-    # TODO: OcTree
+    # OcTree
+    print("\nOcTree ---------")
+    begin_t = time.time()
+    root = octree.octree_construction(db, leaf_size, min_extent)
+    octree_construction_time = time.time() - begin_t
+    print(f"construction time = {octree_construction_time * 1000:.3f} ms")
+
+    begin_t = time.time()
+    result_set = KNNResultSet(capacity=k)
+    octree.octree_knn_search(root, db, result_set, query)
+    knn_search_time = time.time() - begin_t
+    print(f"k nearest neighbors are: {result_set.knn_indexes()}")
+    print(f"knn serch time = {knn_search_time * 1000:.3f} ms")
+
+    begin_t = time.time()
+    result_set = RadiusNNResultSet(radius=radius)
+    octree.octree_radius_search(root, db, result_set, query)
+    radius_search_time = time.time() - begin_t
+    print(f"neighbors within {radius} are {result_set.sorted_neighbors_indexes()}")
+    print(f"radius search time = {radius_search_time * 1000:.3f} ms")
+
+    begin_t = time.time()
+    result_set = RadiusNNResultSet(radius=radius)
+    octree.octree_radius_search_fast(root, db, result_set, query)
+    radius_fast_search_time = time.time() - begin_t
+    print(f"neighbors within {radius} are {result_set.sorted_neighbors_indexes()}")
+    print(f"radius fast search time = {radius_fast_search_time * 1000:.3f} ms")
 
     # print("octree --------------")
     # construction_time_sum = 0
@@ -137,41 +163,6 @@ def main():
     #                                                                  knn_time_sum*1000/iteration_num,
     #                                                                  radius_time_sum*1000/iteration_num,
     #                                                                  brute_time_sum*1000/iteration_num))
-
-    # print("kdtree --------------")
-    # construction_time_sum = 0
-    # knn_time_sum = 0
-    # radius_time_sum = 0
-    # brute_time_sum = 0
-    # for i in range(iteration_num):
-    #     filename = os.path.join(root_dir, cat[i])
-    #     db_np = read_velodyne_bin(filename)
-
-    #     begin_t = time.time()
-    #     root = kdtree.kdtree_construction(db_np, leaf_size)
-    #     construction_time_sum += time.time() - begin_t
-
-    #     query = db_np[0,:]
-
-    #     begin_t = time.time()
-    #     result_set = KNNResultSet(capacity=k)
-    #     kdtree.kdtree_knn_search(root, db_np, result_set, query)
-    #     knn_time_sum += time.time() - begin_t
-
-    #     begin_t = time.time()
-    #     result_set = RadiusNNResultSet(radius=radius)
-    #     kdtree.kdtree_radius_search(root, db_np, result_set, query)
-    #     radius_time_sum += time.time() - begin_t
-
-    #     begin_t = time.time()
-    #     diff = np.linalg.norm(np.expand_dims(query, 0) - db_np, axis=1)
-    #     nn_idx = np.argsort(diff)
-    #     nn_dist = diff[nn_idx]
-    #     brute_time_sum += time.time() - begin_t
-    # print("Kdtree: build %.3f, knn %.3f, radius %.3f, brute %.3f" % (construction_time_sum * 1000 / iteration_num,
-    #                                                                  knn_time_sum * 1000 / iteration_num,
-    #                                                                  radius_time_sum * 1000 / iteration_num,
-    #                                                                  brute_time_sum * 1000 / iteration_num))
 
 
 if __name__ == '__main__':
