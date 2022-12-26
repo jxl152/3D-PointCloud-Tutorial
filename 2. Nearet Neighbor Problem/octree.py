@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 from result_set import KNNResultSet, RadiusNNResultSet
-
+import benchmark
 
 class Octant:
     def __init__(self, children, center, extent, point_indices, is_leaf):
@@ -343,52 +343,66 @@ def octree_radius_search_fast(root: Octant, db: np.ndarray, result_set: RadiusNN
     return inside(query, result_set.worst_distance(), root)
 
 
-# def main():
-#     # configuration
-#     db_size = 64000
-#     dim = 3
-#     leaf_size = 4
-#     min_extent = 0.0001
-#     k = 8
-#
-#     db_np = np.random.rand(db_size, dim)
-#
-#     root = octree_construction(db_np, leaf_size, min_extent)
-#
-#     # depth = [0]
-#     # max_depth = [0]
-#     # traverse_octree(root, depth, max_depth)
-#     # print("tree max depth: %d" % max_depth[0])
-#
-#     # query = np.asarray([0, 0, 0])
-#     # result_set = KNNResultSet(capacity=k)
-#     # octree_knn_search(root, db_np, result_set, query)
-#     # print(result_set)
-#     #
-#     # diff = np.linalg.norm(np.expand_dims(query, 0) - db_np, axis=1)
-#     # nn_idx = np.argsort(diff)
-#     # nn_dist = diff[nn_idx]
-#     # print(nn_idx[0:k])
-#     # print(nn_dist[0:k])
-#
-#     begin_t = time.time()
-#     print("Radius search normal:")
-#     for i in range(100):
-#         query = np.random.rand(3)
-#         result_set = RadiusNNResultSet(radius=0.5)
-#         octree_radius_search(root, db_np, result_set, query)
-#     # print(result_set)
-#     print("Search takes %.3fms\n" % ((time.time() - begin_t) * 1000))
-#
-#     begin_t = time.time()
-#     print("Radius search fast:")
-#     for i in range(100):
-#         query = np.random.rand(3)
-#         result_set = RadiusNNResultSet(radius = 0.5)
-#         octree_radius_search_fast(root, db_np, result_set, query)
-#     # print(result_set)
-#     print("Search takes %.3fms\n" % ((time.time() - begin_t)*1000))
-#
-#
-# if __name__ == '__main__':
-#     main()
+def main():
+    # configuration
+    leaf_size = 32
+    min_extent = 0.0001
+    k = 8
+    radius = 5  # affect the comparison result between radius_search(...) and radius_search_fast(...)
+
+    # load the point cloud data
+    file_path = "000000.bin"
+    db = benchmark.read_velodyne_bin(file_path)
+
+    np.random.seed(42)
+    np.set_printoptions(suppress=True, precision=3)
+
+
+    octree_construction_time_sum = 0
+    octree_knn_search_time_sum = 0
+    octree_radius_search_time_sum = 0
+    octree_radius_fast_search_time_sum = 0
+    iteration_num = 1
+    for _ in range(iteration_num):
+        query = np.random.rand(3)
+
+        # OcTree
+        # print("\nOcTree ---------")
+        begin_t = time.time()
+        root = octree_construction(db, leaf_size, min_extent)
+        octree_construction_time = time.time() - begin_t
+        octree_construction_time_sum += octree_construction_time
+        # print(f"construction time = {octree_construction_time * 1000:.3f} ms")
+
+        begin_t = time.time()
+        result_set = KNNResultSet(capacity=k)
+        octree_knn_search(root, db, result_set, query)
+        octree_knn_search_time = time.time() - begin_t
+        octree_knn_search_time_sum += octree_knn_search_time
+        # print(f"k nearest neighbors are: {result_set.knn_indexes()}")
+        # print(f"knn serch time = {octree_knn_search_time * 1000:.3f} ms")
+
+        begin_t = time.time()
+        result_set = RadiusNNResultSet(radius=radius)
+        octree_radius_search(root, db, result_set, query)
+        octree_radius_search_time = time.time() - begin_t
+        octree_radius_search_time_sum += octree_radius_search_time
+        # print(f"neighbors within {radius} are {result_set.sorted_neighbors_indexes()}")
+        # print(f"radius search time = {octree_radius_search_time * 1000:.3f} ms")
+
+        begin_t = time.time()
+        result_set = RadiusNNResultSet(radius=radius)
+        octree_radius_search_fast(root, db, result_set, query)
+        octree_radius_fast_search_time = time.time() - begin_t
+        octree_radius_fast_search_time_sum += octree_radius_fast_search_time
+        # print(f"neighbors within {radius} are {result_set.sorted_neighbors_indexes()}")
+        # print(f"radius fast search time = {octree_radius_fast_search_time * 1000:.3f} ms")
+
+    print(f"Octree:\n build = {octree_construction_time_sum * 1000 / iteration_num:.3f}, "
+          f"knn search = {octree_knn_search_time_sum * 1000 / iteration_num:.3f},"
+          f"radius search = {octree_radius_search_time_sum * 1000 / iteration_num:.3f},"
+          f"radius fast search = {octree_radius_fast_search_time_sum * 1000 / iteration_num:.3f}")
+
+
+if __name__ == '__main__':
+    main()
