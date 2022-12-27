@@ -1,9 +1,3 @@
-
-# 文件功能：
-# 1. 生成模拟聚类数据
-# 2. 调用聚类算法，包括自编的K-Means、GMM，以及sklearn中自带的算法，进行聚类提取
-# 3. 在同一张图片中显示聚类结果和算法运行时间，对比查看
-
 import time
 import warnings
 
@@ -16,13 +10,11 @@ from sklearn.preprocessing import StandardScaler
 from itertools import cycle, islice
 
 from KMeans import K_Means
-from GMM import GMM
+# from GMM import GMM
 
 np.random.seed(0)
 
-# ============
-# 模拟原始数据
-# ============
+# Data simulation
 print('start generate datasets ...')
 n_samples = 1500
 noisy_circles = datasets.make_circles(n_samples=n_samples, factor=.5,
@@ -75,8 +67,6 @@ datasets = [
     (no_structure, {})]
 
 
-# 一共两层循环，实现每个仿真数据被每种聚类算法调用以此
-# 此处是外层循环，遍历所有仿真数据
 for i_dataset, (dataset, algo_params) in enumerate(datasets):
     # update parameters with dataset-specific values
     params = default_base.copy()
@@ -99,13 +89,10 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     # make connectivity symmetric
     connectivity = 0.5 * (connectivity + connectivity.T)
 
-    # ============
-    # 初始化所有聚类算法
-    # ============
-    # 自编的K-Means、GMM算法
     my_kmeans = K_Means(n_clusters=params['n_clusters'])
-    my_gmm = GMM(n_clusters=params['n_clusters'])
-    # sklearn中自带的算法
+#     my_gmm = GMM(n_clusters=params['n_clusters'])
+
+    # algorithms implemented in Sklearn
     ms = cluster.MeanShift(bandwidth=bandwidth, bin_seeding=True)
     two_means = cluster.MiniBatchKMeans(n_clusters=params['n_clusters'])
     ward = cluster.AgglomerativeClustering(
@@ -126,23 +113,22 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     birch = cluster.Birch(n_clusters=params['n_clusters'])
     gmm = mixture.GaussianMixture(
         n_components=params['n_clusters'], covariance_type='full')
-    
+
     clustering_algorithms = (
         ('My_KMeans', my_kmeans),
-        ('My_GMM', my_gmm),
+        # ('My_GMM', my_gmm),
         ('MiniBatchKMeans', two_means),
-        ('AffinityPropagation', affinity_propagation),
-        ('MeanShift', ms),
+        # ('AffinityPropagation', affinity_propagation),
+        # ('MeanShift', ms),
         ('SpectralClustering', spectral),
-        ('Ward', ward),
-        ('AgglomerativeClustering', average_linkage),
-        ('DBSCAN', dbscan),
-        ('OPTICS', optics),
-        ('Birch', birch),
+        # ('Ward', ward),
+        # ('AgglomerativeClustering', average_linkage),
+        # ('DBSCAN', dbscan),
+        # ('OPTICS', optics),
+        # ('Birch', birch),
         ('GaussianMixture', gmm)
     )
 
-    # 此处是内层循环，遍历每种算法
     for name, algorithm in clustering_algorithms:
         t0 = time.time()
 
@@ -164,7 +150,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 
         t1 = time.time()
         if hasattr(algorithm, 'labels_'):
-            y_pred = algorithm.labels_.astype(np.int)
+            y_pred = algorithm.labels_.astype(np.int_)
         else:
             y_pred = algorithm.predict(X)
 
