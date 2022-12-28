@@ -15,7 +15,7 @@ class K_Means(object):
             Relative tolerance with regard to Frobenius norm of the difference in the cluster centers
             of two consecutive iterations to declare convergence.
     """
-    def __init__(self, n_clusters=2, tolerance=0.0001, max_iter=500):
+    def __init__(self, n_clusters=2, tolerance=0.0001, max_iter=300):
         self.k_ = n_clusters
         self.tolerance_ = tolerance
         self.max_iter_ = max_iter
@@ -93,6 +93,8 @@ if __name__ == '__main__':
     x = np.array([[1, 2], [1.5, 1.8], [5, 8], [8, 8], [1, 0.6], [9, 11]])
     k_means = K_Means(n_clusters=2)
     k_means.fit(x)
+    np.set_printoptions(precision=3)
+    print(f"centroids are: {k_means.centroids}")
 
     cat = k_means.predict(x)
     print(cat)
@@ -100,6 +102,8 @@ if __name__ == '__main__':
     color = ["blue", "red"]
     for i, point in enumerate(x):
         plt.scatter(point[0], point[1], c=color[cat[i]])
+    for centroid in k_means.centroids:
+        plt.scatter(centroid[0], centroid[1], marker="x", color="black")
     plt.show()
 
     # prev_centroids = np.asarray([[0, 1], [2, 3]])

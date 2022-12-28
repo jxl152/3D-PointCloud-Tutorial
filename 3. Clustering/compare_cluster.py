@@ -10,7 +10,7 @@ from sklearn.preprocessing import StandardScaler
 from itertools import cycle, islice
 
 from KMeans import K_Means
-# from GMM import GMM
+from GMM import GMM
 
 np.random.seed(0)
 
@@ -90,7 +90,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     connectivity = 0.5 * (connectivity + connectivity.T)
 
     my_kmeans = K_Means(n_clusters=params['n_clusters'])
-#     my_gmm = GMM(n_clusters=params['n_clusters'])
+    my_gmm = GMM(n_clusters=params['n_clusters'])
 
     # algorithms implemented in Sklearn
     ms = cluster.MeanShift(bandwidth=bandwidth, bin_seeding=True)
@@ -116,7 +116,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 
     clustering_algorithms = (
         ('My_KMeans', my_kmeans),
-        # ('My_GMM', my_gmm),
+        ('My_GMM', my_gmm),
         ('MiniBatchKMeans', two_means),
         # ('AffinityPropagation', affinity_propagation),
         # ('MeanShift', ms),
@@ -156,7 +156,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 
         plt.subplot(len(datasets), len(clustering_algorithms), plot_num)
         if i_dataset == 0:
-            plt.title(name, size=7)
+            plt.title(name, size=12)
 
         colors = np.array(list(islice(cycle(['#377eb8', '#ff7f00', '#4daf4a',
                                              '#f781bf', '#a65628', '#984ea3',
