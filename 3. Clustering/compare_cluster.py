@@ -11,6 +11,7 @@ from itertools import cycle, islice
 
 from KMeans import K_Means
 from GMM import GMM
+from SpectralClustering import Spectral_Clustering
 
 np.random.seed(0)
 
@@ -35,9 +36,10 @@ varied = datasets.make_blobs(n_samples=n_samples,
                              cluster_std=[1.0, 2.5, 0.5],
                              random_state=random_state)
 print('datasets generated over')
-# ============
-# 设置聚类算法参数
-# ============
+
+# ================
+# set parameters
+# ================
 plt.figure(figsize=(9 * 2 + 3, 12.5))
 plt.subplots_adjust(left=.02, right=.98, bottom=.001, top=.96, wspace=.05,
                     hspace=.01)
@@ -91,6 +93,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 
     my_kmeans = K_Means(n_clusters=params['n_clusters'])
     my_gmm = GMM(n_clusters=params['n_clusters'])
+    my_sc = Spectral_Clustering(n_clusters=params['n_clusters'])
 
     # algorithms implemented in Sklearn
     ms = cluster.MeanShift(bandwidth=bandwidth, bin_seeding=True)
@@ -117,6 +120,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
     clustering_algorithms = (
         ('My_KMeans', my_kmeans),
         ('My_GMM', my_gmm),
+        ('My_SC', my_sc),
         ('MiniBatchKMeans', two_means),
         # ('AffinityPropagation', affinity_propagation),
         # ('MeanShift', ms),
@@ -156,7 +160,7 @@ for i_dataset, (dataset, algo_params) in enumerate(datasets):
 
         plt.subplot(len(datasets), len(clustering_algorithms), plot_num)
         if i_dataset == 0:
-            plt.title(name, size=12)
+            plt.title(name, size=16)
 
         colors = np.array(list(islice(cycle(['#377eb8', '#ff7f00', '#4daf4a',
                                              '#f781bf', '#a65628', '#984ea3',
