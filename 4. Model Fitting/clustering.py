@@ -103,7 +103,7 @@ def plot_clusters(data, cluster_index):
 def main():
     np.random.seed(42)
 
-    root_dir = 'data/'
+    root_dir = 'data_samples/'
     cat = os.listdir(root_dir)
     for i in range(len(cat)):
         filename = os.path.join(root_dir, cat[i])
@@ -122,7 +122,7 @@ def main():
         plot_clusters(foreground_cloud, cluster_index)
 
     # load the point cloud data
-    # file_path = "data/000000.bin"
+    # file_path = "data_samples/000000.bin"
     # origin_points = read_velodyne_bin(file_path)
     # visualize the point cloud
     # visualize_point_cloud(origin_points)
