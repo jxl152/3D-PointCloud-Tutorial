@@ -11,7 +11,7 @@ from model import PointNet
 SEED = 13
 gpus = [0]
 batch_size = 1
-ckp_path = '../output/latest.pth'
+ckp_path = './output/models/latest.pth'
 
 def load_ckp(ckp_path, model):
   state = torch.load(ckp_path)
@@ -22,7 +22,7 @@ if __name__ == "__main__":
   torch.manual_seed(SEED)
   device = torch.device(f'cuda:{gpus[0]}' if torch.cuda.is_available() else 'cpu')
   print("Loading test dataset...")
-  test_data = PointNetDataset("./dataset/modelnet40_normal_resampled", train=1)
+  test_data = PointNetDataset("../data/modelnet40_normal_resampled", train=1)
   test_loader = DataLoader(test_data, batch_size=batch_size, shuffle=True)
   model = PointNet().to(device=device)
   if ckp_path:
@@ -39,17 +39,16 @@ if __name__ == "__main__":
       x = x.to(device)
       y = y.to(device)
 
-      # TODO: put x into network and get out
-      out =
+      # put x into network and get out
+      out = model(x)
 
-      # TODO: get pred_y from out
-      pred_y = 
-
+      # get pred_y from out
+      pred_y = out.max(dim=1)[1].cpu().numpy()
       gt = np.argmax(y.cpu().numpy(), axis=1)
       print("pred[" + str(pred_y)+"] gt[" + str(gt) + "]")
 
-      # TODO: calculate acc from pred_y and gt
-      acc = 
+      # calculate acc from pred_y and gt
+      acc = np.sum(pred_y == gt) / len(y)
       gt_ys = np.append(gt_ys, gt)
       pred_ys = np.append(pred_ys, pred_y)
 

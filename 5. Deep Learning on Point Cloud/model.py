@@ -1,8 +1,7 @@
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.autograd import Variable
 import torch
-import pretty_errors
+# import pretty_errors
 
 
 class PointNet(nn.Module):
@@ -25,8 +24,16 @@ class PointNet(nn.Module):
     self.dropout = nn.Dropout(p=0.3)
 
   def forward(self, x):
-    # TODO: use functions in __init__ to build network
-    
+    # shared mlp
+    x = self.relu(self.bn1(self.conv1(x)))
+    x = self.relu(self.bn2(self.conv2(x)))
+    x = self.relu(self.bn3(self.conv3(x)))
+    # max pool
+    x = torch.max(x, dim=2)[0]
+    # mlp
+    x = self.relu(self.bn4(self.fc1(x)))
+    x = self.relu(self.bn5(self.dropout(self.fc2(x))))
+    x = self.fc3(x)
     return x
 
 

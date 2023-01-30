@@ -1,5 +1,6 @@
 from torch.utils.data import DataLoader
 from torch.utils.tensorboard import SummaryWriter
+import torch.nn.functional as F
 import torch.optim as optim
 import torch
 import numpy as np
@@ -21,7 +22,7 @@ global_step = 0
 show_every = 1
 val_every = 3
 date = datetime.date.today()
-save_dir = "../output"
+save_dir = "./output/models"
 
 
 def save_ckp(ckp_dir, model, optimizer, epoch, best_acc, date):
@@ -44,7 +45,9 @@ def load_ckp(ckp_path, model, optimizer):
 
 
 def softXEnt(prediction, real_class):
-    # TODO: return loss here
+    p = F.log_softmax(prediction, dim=1)
+    loss = F.nll_loss(p, real_class.argmax(dim=1))    # negative log likelihood loss
+    return loss
 
 
 def get_eval_acc_results(model, data_loader, device):
@@ -64,15 +67,15 @@ def get_eval_acc_results(model, data_loader, device):
             x = x.to(device)
             y = y.to(device)
 
-            # TODO: put x into network and get out
-            out = 
+            # put x into network and get out
+            out = model(x)
 
-            # TODO: get pred_y from out
-            pred_y =
+            # get pred_y from out
+            pred_y = out.max(dim=1)[1].cpu().numpy()
             gt = np.argmax(y.cpu().numpy(), axis=1)
 
-            # TODO: calculate acc from pred_y and gt
-            acc = 
+            # calculate acc from pred_y and gt
+            acc = np.sum(pred_y == gt) / len(y)
             gt_ys = np.append(gt_ys, gt)
             pred_ys = np.append(pred_ys, pred_y)
             idx = gt
@@ -87,10 +90,10 @@ if __name__ == "__main__":
     torch.manual_seed(SEED)
     device = torch.device(f'cuda:{gpus[0]}' if torch.cuda.is_available() else 'cpu')
     print("Loading train dataset...")
-    train_data = PointNetDataset("../../../dataset/modelnet40_normal_resampled", train=0)
+    train_data = PointNetDataset("../data/modelnet40_normal_resampled", train=0)
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     print("Loading valid dataset...")
-    val_data = PointNetDataset("../../../dataset/modelnet40_normal_resampled/", train=1)
+    val_data = PointNetDataset("../data/modelnet40_normal_resampled/", train=1)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=True)
     print("Set model and optimizer...")
     model = PointNet().to(device=device)
@@ -109,17 +112,17 @@ if __name__ == "__main__":
         x = x.to(device)
         y = y.to(device)
 
-        # TODO: set grad to zero
-
-        # TODO: put x into network and get out
-        out = 
-
+        # set grad to zero
+        optimizer.zero_grad()
+        # put x into network and get out
+        out = model(x)
+        # compute loss
         loss = softXEnt(out, y)
-        
-        # TODO: loss backward
+        # loss backward
+        loss.backward()
+        # update network's param
+        optimizer.step()
 
-        # TODO: update network's param
-        
         acc_loss += batch_size * loss.item()
         num_samples += y.shape[0]
         global_step += 1

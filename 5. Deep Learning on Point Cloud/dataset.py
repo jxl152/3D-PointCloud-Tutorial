@@ -46,11 +46,21 @@ class PointNetDataset(Dataset):
   def __getitem__(self, idx):
     feature, label = self._features[idx], self._labels[idx]
     
-    # TODO: normalize feature
-    
-    # TODO: rotation to feature
+    # normalize input to zero-mean
+    feature = feature - np.mean(feature, axis=0, keepdims=True) # center; (N, 3)
+    max_dist = np.max(np.linalg.norm(feature, axis=1))
+    feature = feature / max_dist # scale
 
-    # jitter
+    # random rotation
+    theta = np.random.uniform(0, np.pi * 2)
+    # rotation_matrix = np.array([[np.cos(theta), 0, -np.sin(theta)],
+    #                             [0, 1, 0],
+    #                             [np.sin(theta), 0, np.cos(theta)]])
+    # less computation
+    rotation_matrix = np.array([[np.cos(theta), -np.sin(theta)], [np.sin(theta), np.cos(theta)]])
+    feature[:, [0, 2]] = feature[:, [0, 2]].dot(rotation_matrix)
+
+    # random jitter
     feature += np.random.normal(0, 0.02, size=feature.shape)
     feature = torch.Tensor(feature.T)
 
@@ -90,7 +100,7 @@ class PointNetDataset(Dataset):
       
 
 if __name__ == "__main__":
-  train_data = PointNetDataset("./dataset/modelnet40_normal_resampled", train=0)
+  train_data = PointNetDataset("../data/modelnet40_normal_resampled", train=0)
   train_loader = DataLoader(train_data, batch_size=2, shuffle=True)
   cnt = 0
   for pts, label in train_loader:
