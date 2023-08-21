@@ -6,7 +6,7 @@
 
 In my Master's thesis project, all the methods, models, and experiments are based on 3D point clouds. To gain a more comprehensive understanding about such a 3D data, I enrolled in a MOOC course to acquire the essential knowledge and commonly-used techniques for working with 3D point clouds.
 
-There are eight chapters in this course. As of August 20, 2023, I have completed the first six chapters. In addition to programming and experiments, I wrote six succinct reports, one for each chapter, for the purpose of conclusion and review.
+There are nine chapters in this course. As of August 20, 2023, I have completed the first six chapters. In addition to programming and experiments, I wrote six succinct reports, one for each chapter, for the purpose of conclusion and review.
 
 #### 1. Introduction and Basic Algorithms
 This chapter introduces several key characteristics of 3D point clouds and three commonly-used techniques: PCA, surface normal estimation, and voxel grid downsampling. <br/>
@@ -38,10 +38,14 @@ This chapters introduces many methods for 3D object detection. However, the assi
 
 Report: [Assignment 6 - Evaluation of KITTI 3D objection detection results](https://github.com/jxl152/3D-PointCloud-Tutorial/blob/main/6.%203D%20Object%20Detection/6.%20Evaluation_of_KITTI_3D_objection_detection_results.pdf)
 
-#### 7. 3D Feature Description
+#### 7. 3D Feature Detection 
 
 Not finished yet...
 
-#### 8. Registration
+#### 8. 3D Feature Description
+
+Not finished yet...
+
+#### 9. Registration
 
 Not finished yet...
